@@ -40,16 +40,17 @@ class TimeTable1 {
             LocalTime time;
 
             if (timeInput.contains(":"))
-                time=LocalTime.parse(timeInput,f1);
+                time = LocalTime.parse(timeInput, f1);
             else if (timeInput.contains("."))
-                time=LocalTime.parse(timeInput,f2);
+                time = LocalTime.parse(timeInput, f2);
             else throw new UnsupportedFormatException1(timeInput);
 
-            if(!isValidTime(time))  throw new InvalidTimeException1(timeInput);
+            if (!isValidTime(time)) throw new InvalidTimeException1(timeInput);
             times.add(time);
         }
     }
-    public boolean isValidTime(LocalTime time){
+
+    public boolean isValidTime(LocalTime time) {
         int hour = time.getHour();
         int minute = time.getMinute();
         return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
@@ -66,7 +67,7 @@ class TimeTable1 {
 
     public void writeTimes(OutputStream out, TimeFormat1 format) {
         PrintWriter pw = new PrintWriter(out);
-        DateTimeFormatter formatter=(format.equals(TimeFormat1.FORMAT_24)?f1:f3);
+        DateTimeFormatter formatter = (format.equals(TimeFormat1.FORMAT_24) ? f1 : f3);
         times.stream()
                 .sorted()
                 .forEach(time -> printFormatted(pw, formatter, time));
