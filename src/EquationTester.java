@@ -71,8 +71,8 @@ public class EquationTester {
             }
 
             equations1.add(new Equation<>(() -> inputs.get(2), num -> num + 1000));
-
             equations1.add(new Equation<>(() -> inputs.get(3), num -> Math.max(num, 100)));
+            
             EquationProcessor.process(inputs, equations1);
 
         } else { // Testing with Line, Integer
@@ -83,8 +83,8 @@ public class EquationTester {
             }
 
             equations2.add(new Equation<>(() -> inputs.get(1), Line::calculateLine));
-
             equations2.add(new Equation<>(() -> inputs.get(0), line -> inputs.stream().filter(in -> line.calculateLine() < in.calculateLine()).mapToDouble(Line::calculateLine).sum()));
+            
             EquationProcessor.process(inputs, equations2);
         }
     }
