@@ -5,11 +5,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.stream.Collectors;
-class Product1{
+class Item{
     int oldPrice;
     int newPrice;
 
-    public Product1(int oldPrice, int newPrice) {
+    public Item(int oldPrice, int newPrice) {
         this.oldPrice = oldPrice;
         this.newPrice = newPrice;
     }
@@ -22,31 +22,31 @@ class Product1{
 }
 class Store{
     String name;
-    List<Product1> products;
+    List<Item> products;
 
-    public Store(String name, List<Product1> products) {
+    public Store(String name, List<Item> products) {
         this.name = name;
         this.products = products;
     }
 
     public static Store createStore(String line){
         String []parts=line.split("\\s+");
-       List<Product1>products=new ArrayList<>();
+       List<Item>products=new ArrayList<>();
         String name=parts[0];
         Arrays.stream(parts)
                 .skip(1)
                 .forEach(part->{
                     String[]prices= part.split(":");
-                    products.add(new Product1(Integer.parseInt(prices[0]),Integer.parseInt(prices[1])));
+                    products.add(new Item(Integer.parseInt(prices[0]),Integer.parseInt(prices[1])));
                 });
         return new Store(name,products);
     }
     public double calculateAverageDiscount(){
-       return products.stream().mapToInt(Product1::calculatePercentageDscount).average().orElse(0.0);
+       return products.stream().mapToInt(Item::calculatePercentageDscount).average().orElse(0.0);
     }
 
     public long totalDiscount(){
-        return products.stream().mapToLong(Product1::calculateTotal).sum();
+        return products.stream().mapToLong(Item::calculateTotal).sum();
     }
 
     public String getName() {
@@ -61,8 +61,8 @@ class Store{
                 name, calculateAverageDiscount(), totalDiscount()));
 
         products.stream()
-                .sorted(Comparator.comparing(Product1::calculatePercentageDscount)
-                        .thenComparing(Product1::calculateTotal)
+                .sorted(Comparator.comparing(Item::calculatePercentageDscount)
+                        .thenComparing(Item::calculateTotal)
                         .reversed())
                 .forEach(product -> sb.append(String.format("%2d%% %s/%s%n",
                         product.calculatePercentageDscount(),
