@@ -4,42 +4,55 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
+import java.util.stream.IntStream;
+
+class QuizesNotSameSizeException extends Exception {
+    public QuizesNotSameSizeException(String message) {
+        super(message);
+    }
+}
+
+class Quiz {
+    String id;
+    List<String> answers;
+    List<String> correctAnswers;
+
+    public Quiz(String id, List<String> answers, List<String> correctAnswers) {
+        this.id = id;
+        this.answers = answers;
+        this.correctAnswers = correctAnswers;
+    }
+
+    public double calculateTotalPoints() throws QuizesNotSameSizeException {
+        if (correctAnswers.size() != answers.size())
+            throw new QuizesNotSameSizeException("A quiz must have same number of correct and selected answers");
+        return IntStream.range(0, answers.size())
+                .mapToDouble(i -> answers.get(i).equals(correctAnswers.get(i)) ? 1 : -0.25)
+                .sum();
+    }
+}
 
 class QuizProcessor {
-
-    public static Map<String, Double> processAnswers(InputStream in) {
-        Map<String, Double> pointsPerStudent = new TreeMap<>();
-
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
-            br.lines().forEach(line -> processLine(line, pointsPerStudent));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return pointsPerStudent;
+    static Map<String, Double> processAnswers(InputStream is) {
+        Map<String, Double> pointsDistribution = new TreeMap<>();
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+        br.lines().forEach(line -> {
+            Quiz q = generateQuiz(line);
+            try {
+                pointsDistribution.put(q.id, q.calculateTotalPoints());
+            } catch (QuizesNotSameSizeException e) {
+                System.out.println(e.getMessage());
+            }
+        });
+        return pointsDistribution;
     }
 
-    private static void processLine(String line, Map<String, Double> pointsPerStudent) {
+    public static Quiz generateQuiz(String line) {
         String[] parts = line.split(";");
         String id = parts[0];
-
-        if (parts[1].length() != parts[2].length()) {
-            throw new IllegalArgumentException("Answer lengths don't match");
-        }
-
-        String[] correctAnswers = parts[1].split(",");
-        String[] userAnswers = parts[2].split(",");
-        double totalPoints = calculateTotalPoints(correctAnswers, userAnswers);
-
-        pointsPerStudent.put(id, totalPoints);
-    }
-
-    private static double calculateTotalPoints(String[] correctAnswers, String[] userAnswers) {
-        double totalPoints = 0;
-        for (int i = 0; i < correctAnswers.length; i++) {
-            totalPoints += correctAnswers[i].equals(userAnswers[i]) ? 1 : -0.25;
-        }
-        return totalPoints;
+        List<String> answers = new ArrayList<>(Arrays.asList(parts[1].split(",\\s+")));
+        List<String> correct = new ArrayList<>(Arrays.asList(parts[2].split(",\\s+")));
+        return new Quiz(id, answers, correct);
     }
 }
 
