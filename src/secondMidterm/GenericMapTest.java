@@ -1,29 +1,26 @@
 package secondMidterm;
 
-import java.time.DayOfWeek;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
-import java.util.TreeMap;
-import java.util.regex.Pattern;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+
 interface MergeStrategy<V> {
-    V execute(V a, V v);
+    V execute(V a, V b);
 }
 
 class MapOps {
-    static <T extends Comparable<T>, V> Map<T, V> merge(Map<T, V> map1, Map<T, V> map2, MergeStrategy<V> strategy) {
+    public static <T extends Comparable<T>, V> Map<T, V> merge(Map<T, V> map1, Map<T, V> map2, MergeStrategy<V> strategy) {
         Map<T, V> newMap = new TreeMap<>();
         map2.forEach((key, value) -> {
             if (map1.containsKey(key)) {
-                newMap.put(key,  strategy.execute(value, map1.get(key)));
-            }
+                V value2 = map1.get(key);
+                newMap.put(key, strategy.execute(value, value2));
+            } else newMap.put(key, value);
         });
         map1.forEach(newMap::putIfAbsent);
-        map2.forEach(newMap::putIfAbsent);
         return newMap;
+
     }
 }
 
@@ -66,10 +63,8 @@ public class GenericMapTest {
             readStrMap(sc, mapLeft);
             readStrMap(sc, mapRight);
 
-
-            MergeStrategy<String> mergeStrategy = (str1, str2) -> str2.replaceAll(str1, IntStream.range(0,str1.length()).mapToObj(i->"*").collect(Collectors.joining("")));
+            MergeStrategy<String> mergeStrategy = (str1, str2) -> str2.replaceAll(str1, IntStream.range(0, str1.length()).mapToObj(i -> "*").collect(Collectors.joining("")));
             printMap(MapOps.merge(mapLeft, mapRight, mergeStrategy));
-
         }
     }
 
