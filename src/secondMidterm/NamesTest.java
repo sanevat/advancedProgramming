@@ -3,53 +3,42 @@ package secondMidterm;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import java.util.*;
-import java.util.stream.Collectors;
 
 class Names {
-    private List<String> names;
-    private Map<String, Integer> namesCount;
-    private Map<String, Integer> uniqueLetters;
+    Map<String, Integer> names;
 
     public Names() {
-        this.names = new ArrayList<>();
-        this.namesCount = new TreeMap<>();
-        this.uniqueLetters = new HashMap<>();
+        this.names = new TreeMap<>();
     }
 
-    public int getUniqueLetters(String word) {
+    public int findUniqueLetters(String word) {
+        Set<Character> chars = new HashSet<>();
         word = word.toLowerCase();
-        Set<Character> uniqueChars = new HashSet<>();
-        for (char c : word.toCharArray()) {
-            uniqueChars.add(c);
-        }
-        return uniqueChars.size();
-    }
+        for (Character c : word.toCharArray())
+            chars.add(c);
+        return chars.size();
 
-    public String findName(int len, int x) {
-        List<String> filteredNames = namesCount.keySet().stream()
-                .filter(name -> name.length() < len)
-                .sorted()
-                .collect(Collectors.toList());
-
-        if (filteredNames.isEmpty()) {
-            return "No names found";
-        }
-        int index = x % filteredNames.size();
-        return filteredNames.get(index);
     }
 
     public void addName(String name) {
-        names.add(name);
-        namesCount.put(name, namesCount.getOrDefault(name, 0) + 1);
-        uniqueLetters.put(name, getUniqueLetters(name));
+        names.putIfAbsent(name, 0);
+        names.put(name, names.get(name) + 1);
     }
 
     public void printN(int n) {
-        namesCount.entrySet().stream()
+        names.entrySet().stream()
                 .filter(entry -> entry.getValue() >= n)
-                .forEach(entry -> System.out.printf("%s (%d) %d%n",
-                        entry.getKey(), entry.getValue(), uniqueLetters.get(entry.getKey())));
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> System.out.println(String.format("%s (%d) %d", entry.getKey(), entry.getValue(),
+                        findUniqueLetters(entry.getKey()))));
+    }
+
+    public String findName(int len, int x) {
+        List<String> namesShorterThanLen = names.keySet().stream()
+                .filter(key -> key.length() < len)
+                .collect(Collectors.toList());
+        int newX = (x > namesShorterThanLen.size()) ? (x % namesShorterThanLen.size()) : x;
+        return namesShorterThanLen.get(newX);
     }
 }
 
