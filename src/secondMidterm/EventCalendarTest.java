@@ -12,8 +12,7 @@ class WrongDateException extends Exception {
         super(String.format("Wrong date: %s", dateTime.format(dtf)));
     }
 }
-
-class Event {
+class Event{
     String name;
     String location;
     LocalDateTime date;
@@ -32,59 +31,48 @@ class Event {
     public LocalDateTime getDate() {
         return date;
     }
-
     @Override
     public String toString() {
         return String.format("%s at %s, %s", date.format(dtf), location, name);
     }
 }
-
-class EventCalendar {
+class EventCalendar{
     int year;
-    List<Event> events;
-    Map<LocalDateTime, Set<Event>> eventsByDay;
+    Map<LocalDateTime,Set<Event>>events;
 
-    public EventCalendar(int year) {
-        this.year = year;
-        this.events = new ArrayList<>();
-        this.eventsByDay = new HashMap<>();
+    public EventCalendar(int year){
+        this.year=year;
+        this.events=new HashMap<>();
     }
-
     public void addEvent(String name, String location, LocalDateTime date) throws WrongDateException {
-        if (year != date.getYear())
+        if(date.getYear()!=year)
             throw new WrongDateException(date);
-        Event e = new Event(name, location, date);
-        events.add(e);
-        eventsByDay.putIfAbsent(date.toLocalDate().atStartOfDay(), new HashSet<>());
-        eventsByDay.get(date.toLocalDate().atStartOfDay()).add(e);
+        events.putIfAbsent(date.toLocalDate().atStartOfDay(),new HashSet<>());
+        events.get(date.toLocalDate().atStartOfDay()).add(new Event(name, location, date));
     }
-
-    public void listEvents(LocalDateTime date) {
-        if(!eventsByDay.containsKey(date.toLocalDate().atStartOfDay())){
+    public void listEvents(LocalDateTime date){
+        if(!events.containsKey(date.toLocalDate().atStartOfDay())){
             System.out.println("No events on this day!");
             return;
         }
 
-        eventsByDay.get(date.toLocalDate().atStartOfDay()).stream()
+        events.get(date.toLocalDate().atStartOfDay()).stream()
                 .sorted(Comparator.comparing(Event::getDate).thenComparing(Event::getName))
                 .forEach(System.out::println);
     }
-
-    public int countEventsInMonth(int month) {
-        return (int) events.stream().filter(event -> event.getDate().getMonthValue() == month)
-                .count();
-    }
-
-
-    public void listByMonth() {
-        Map<Integer, Integer> countEventsInMonth = new TreeMap<>();
-        for (int i = 1; i < 13; i++) {
-            countEventsInMonth.put(i, countEventsInMonth(i));
+    public void listByMonth(){
+        Map<Integer,Integer>eventsByMonth=new TreeMap<>();
+        for(int i=1;i<13;i++){
+            eventsByMonth.put(i,0);
         }
-        countEventsInMonth.forEach((key, val) -> System.out.println(key + " : " + val));
+        events.values().stream().flatMap(Collection::stream).forEach(event->
+                eventsByMonth.put(event.date.getMonthValue(),eventsByMonth.get(event.date.getMonthValue())+1));
+        eventsByMonth.forEach((key,value)-> System.out.println(key+" : "+value));
     }
-}
 
+
+
+}
 public class EventCalendarTest {
     public static void main(String[] args) throws ParseException {
         Scanner scanner = new Scanner(System.in);
