@@ -2,7 +2,6 @@ package secondMidterm;
 
 import java.util.*;
 
-
 class Participant{
     String city;
     String code;
@@ -15,17 +14,16 @@ class Participant{
         this.name = name;
         this.age = age;
     }
-
-    public String getCode() {
-        return code;
-    }
-
     public String getName() {
         return name;
     }
 
     public int getAge() {
         return age;
+    }
+
+    public String getCode() {
+        return code;
     }
 
     @Override
@@ -43,32 +41,28 @@ class Participant{
 
     @Override
     public String toString() {
-        return String.format("%s %s %d",name,code,age);
+        return code+" "+name+" "+age;
     }
 }
 class Audition{
-    Map<String,Set<Participant>>participantMap;
+    Map<String,Set<Participant>>participantsByCity;
 
     public Audition() {
-        participantMap=new HashMap<>();
+        this.participantsByCity=new HashMap<>();
     }
     public void addParticipant(String city, String code, String name, int age){
-        Participant p=new Participant(city,code,name,age);
-        if(!participantMap.containsKey(city))
-            participantMap.put(city,new HashSet<>());
-        participantMap.get(city).add(p);
-
+        participantsByCity.putIfAbsent(city,new HashSet<>());
+        participantsByCity.get(city).add(new Participant(city, code, name, age));
     }
     public void listByCity(String city){
-        Set<Participant> sortedSet=new TreeSet<>(Comparator.comparing(Participant::getName)
-                .thenComparing(Participant::getAge)
-                .thenComparing(Participant::getCode)
-
-        );
-        sortedSet.addAll(participantMap.get(city));
-        sortedSet.forEach(System.out::println);
+        participantsByCity.get(city).stream().sorted(Comparator.comparing(Participant::getName)
+                        .thenComparing(Participant::getAge)
+                        .thenComparing(Participant::getCode))
+                .forEach(System.out::println);
     }
+
 }
+
 public class AuditionTest {
     public static void main(String[] args) {
         Audition audition = new Audition();
