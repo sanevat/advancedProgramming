@@ -2,119 +2,109 @@ package secondMidterm;
 
 import java.io.*;
 import java.util.*;
-class Person{
-    String id;
-    String program;
-    List<Integer>grades;
 
-    public Person(String id, String program, List<Integer> grades) {
+class Person {
+    String id;
+    String direction;
+    List<Integer> grades;
+
+    public Person(String id, String direction, List<Integer> grades) {
         this.id = id;
-        this.program = program;
+        this.direction = direction;
         this.grades = grades;
     }
-    public double averageGrade(){
-        return grades.stream().mapToInt(i->i).average().orElse(0.0);
+
+    public double gpa() {
+        return grades.stream().mapToInt(Integer::intValue).average().orElse(5.0);
     }
 
-
-    @Override
-    public String toString() {
-        return String.format("%s %.2f",id,averageGrade());
+    public int countNumberOfTens() {
+        return (int) grades.stream().filter(grade -> grade == 10).count();
     }
 
     public String getId() {
         return id;
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s %.2f", id, gpa());
+    }
 }
-class PersonRecords{
-    Map<String,Person>students;
-    Map<String,List<Person>>studentsPerProgram;
-    Map<String,Map<Integer,Integer>>distributinMap;
+
+class PersonRecords {
+    Map<String, Set<Person>> students;
 
     public PersonRecords() {
-        students=new HashMap<>();
-        studentsPerProgram=new TreeMap<>();
-        distributinMap=new TreeMap<>();
+        this.students = new TreeMap<>();
     }
 
-    public int readRecords(InputStream in) {
-        BufferedReader br=new BufferedReader(new InputStreamReader(in));
-        br.lines().forEach(this::readLine);
-        return students.keySet().size();
+    public int readRecords(InputStream is) {
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+        br.lines().forEach(line -> {
+            Person p = createPerson(line);
+            students.putIfAbsent(p.direction, new HashSet<>());
+            students.get(p.direction).add(p);
+        });
+        return students.values().stream().flatMap(Collection::stream).toList().size();
     }
-    public void readLine(String line){
-        String[]parts=line.split("\\s+");
-        String id=parts[0];
-        String program=parts[1];
-        List<Integer>grades=new ArrayList<>();
+
+    public Person createPerson(String line) {
+        String[] parts = line.split("\\s+");
+        String id = parts[0];
+        String direction = parts[1];
+        List<Integer> grades = new ArrayList<>();
         Arrays.stream(parts)
                 .skip(2)
-                .forEach(part->grades.add(Integer.parseInt(part)));
-        Person p=new Person(id,program,grades);
-
-        if(!students.containsKey(id)){
-            students.put(id,null);
-        }
-        if(!studentsPerProgram.containsKey(program)){
-            studentsPerProgram.put(program,new ArrayList<>());
-        }
-        if(!distributinMap.containsKey(program)){
-            distributinMap.put(program,new HashMap<>());
-        }
-        students.put(id,p);
-        studentsPerProgram.get(program).add(p);
-    }
-    public void distribution(){
-        for (Map<Integer, Integer> map : distributinMap.values()) {
-            for (int i = 6; i <= 10; i++) {
-                map.putIfAbsent(i, 0);
-            }
-        }
-
-        for (Person person : students.values()) {
-            Map<Integer, Integer> map = distributinMap.get(person.program);
-            for (int grade : person.grades) {
-                map.put(grade, map.getOrDefault(grade, 0) + 1);
-            }
-        }
+                .forEach(part -> grades.add(Integer.parseInt(part)));
+        return new Person(id, direction, grades);
     }
 
-    public void writeTable(OutputStream out) {
-        PrintWriter pw=new PrintWriter(out);
-        studentsPerProgram.forEach((key, value) -> {
+    public void writeTable(OutputStream os) {
+        PrintWriter pw = new PrintWriter(os);
+        students.forEach((key, value) -> {
             pw.println(key);
             value.stream()
-                    .sorted(Comparator.comparing(Person::averageGrade).reversed().thenComparing(Person::getId))
+                    .sorted(Comparator.comparing(Person::gpa)
+                            .reversed()
+                            .thenComparing(Person::getId))
                     .forEach(pw::println);
         });
         pw.flush();
     }
 
-    public void writeDistribution(PrintStream out) {
-        PrintWriter pw=new PrintWriter(out);
-        distribution();
-        List<Map.Entry<String, Map<Integer, Integer>>> sortedPrograms = new ArrayList<>(distributinMap.entrySet());
+    public int countNumberOfTens(Set<Person> students) {
+        return students.stream().mapToInt(Person::countNumberOfTens).sum();
+    }
 
-        sortedPrograms.sort(Comparator.comparingInt((Map.Entry<String, Map<Integer, Integer>> entry) ->
-                entry.getValue().getOrDefault(10, 0)).reversed());
+    public Map<Integer, Integer> makeDistribution(Set<Person> students) {
+        Map<Integer, Integer> distributionOfGrades = new TreeMap<>();
+        for (int i = 6; i < 11; i++) {
+            distributionOfGrades.put(i, 0);
+        }
+        students.forEach(stud -> stud.grades.forEach(grade ->
+                distributionOfGrades.put(grade, distributionOfGrades.get(grade) + 1)));
+        return distributionOfGrades;
+    }
 
-        sortedPrograms.forEach(entry -> {
-            String program = entry.getKey();
-            Map<Integer, Integer> distribution = entry.getValue();
-            pw.println(program);
-            distribution.forEach((grade, count) -> {
-                StringBuilder sb = new StringBuilder();
-                sb.append(String.format("%2d", grade));
-                sb.append(" | ");
-                sb.append("*".repeat(Math.max(0, (count%10==0)?(count / 10):(count/10+1))));
-                sb.append("(").append(count).append(")");
-                pw.println(sb);
-            });
-        });
+    public String generateAsterisks(int numGrades) {
+        return "*".repeat(Math.max(0, (numGrades % 10 == 0) ? numGrades / 10 : numGrades / 10 + 1));
+    }
 
+    public void writeDistribution(OutputStream os) {
+        PrintWriter pw = new PrintWriter(os);
+        students.entrySet().stream()
+                .sorted((entry1, entry2) -> Integer.compare(countNumberOfTens(entry2.getValue()),
+                        countNumberOfTens(entry1.getValue())))
+                .forEach(entry -> {
+                    pw.println(entry.getKey());
+                    Map<Integer, Integer> distribution = makeDistribution(entry.getValue());
+                    distribution.forEach((key, value) -> pw.println(String.format("%2d | %s(%d)", key, generateAsterisks(value), value)));
+                });
         pw.flush();
     }
 }
+
 public class StudentRecordsTest {
     public static void main(String[] args) {
         System.out.println("=== READING RECORDS ===");
