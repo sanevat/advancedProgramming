@@ -12,65 +12,57 @@ class Temperature {
         this.scale = scale;
     }
 
-    public double getTemp() {
-        return temp;
-    }
-
-    public void convertInC(char c) {
+    public void changeScale(char c) {
         if (scale == c) return;
         if (scale == 'F') {
-            this.temp = (temp - 32) * 5 / 9.0;
+            temp = (temp - 32) * 5 / 9;
             scale = 'C';
         } else if (scale == 'C') {
-            this.temp = (temp * 9) / 5.0 + 32;
+            temp = temp * 9 / 5 + 32;
             scale = 'F';
         }
-
     }
 }
 
 class DailyTemperatures {
-    Map<Integer, List<Temperature>> temperaturesPerDay;
+    Map<Integer, List<Temperature>> dailyTemperatures;
 
     public DailyTemperatures() {
-        this.temperaturesPerDay = new TreeMap<>();
+        this.dailyTemperatures = new TreeMap<>();
     }
 
     public void readTemperatures(InputStream in) {
         BufferedReader br = new BufferedReader(new InputStreamReader(in));
-        br.lines()
-                .forEach(line -> {
-                    String[] parts = line.split("\\s+");
-                    int day = Integer.parseInt(parts[0]);
-                    List<Temperature> temperatures = new ArrayList<>();
-                    Arrays.stream(parts)
-                            .skip(1)
-                            .forEach(part -> temperatures.add(
-                                    new Temperature(Integer.parseInt(part.substring(0, part.length() - 1)), part.charAt(part.length() - 1))
-                            ));
-
-                    temperaturesPerDay.putIfAbsent(day, new ArrayList<>());
-                    temperaturesPerDay.put(day, temperatures);
-                });
+        br.lines().forEach(line -> {
+            String[] parts = line.split("\\s+");
+            int day = Integer.parseInt(parts[0]);
+            List<Temperature> temperatures = new ArrayList<>();
+            Arrays.stream(parts).skip(1)
+                    .forEach(part -> {
+                        int temp = Integer.parseInt(part.substring(0, part.length() - 1));
+                        char c = part.charAt(part.length() - 1);
+                        temperatures.add(new Temperature(temp, c));
+                    });
+            dailyTemperatures.putIfAbsent(day, new ArrayList<>());
+            dailyTemperatures.get(day).addAll(temperatures);
+        });
     }
 
-    public double avgTemperature(List<Temperature> temps) {
-        return temps.stream().mapToDouble(Temperature::getTemp).average().orElse(0.0);
+    public void changeScale(char c) {
+        dailyTemperatures.values().stream().flatMap(Collection::stream)
+                .forEach(temp -> temp.changeScale(c));
     }
 
     public void writeDailyStats(OutputStream out, char c) {
         PrintWriter pw = new PrintWriter(out);
-        temperaturesPerDay.forEach((key, value) -> {
-            value.forEach(val -> val.convertInC(c));
-            List<Temperature> sortedValue = value.stream()
-                    .sorted(Comparator.comparing(Temperature::getTemp))
-                    .toList();
-            pw.printf("%3d: Count: %3d Min: %6.2f%c Max: %6.2f%c Avg: %6.2f%c\n",
-                    key, value.size(), sortedValue.get(0).temp, c, sortedValue.get(sortedValue.size() - 1).temp,
-                    c, avgTemperature(value), c);
+        changeScale(c);
+        dailyTemperatures.forEach((key, value) -> {
+            DoubleSummaryStatistics dss = new DoubleSummaryStatistics();
+            value.forEach(temp -> dss.accept(temp.temp));
+            pw.println(String.format("%3d: Count: %3d Min: %6.2f%c Max: %6.2f%c Avg: %6.2f%c",
+                    key, dss.getCount(), dss.getMin(), c, dss.getMax(), c, dss.getAverage(), c));
         });
         pw.flush();
-
     }
 }
 
