@@ -1,115 +1,95 @@
 package secondMidterm;
 
 import java.util.*;
-class SeatNotAllowedException extends Exception{
+
+class SeatNotAllowedException extends Exception {
     public SeatNotAllowedException() {
+        super("SeatNotAllowedException");
     }
-
-
 }
-class SeatTakenException extends Exception{
+
+class SeatTakenException extends Exception {
     public SeatTakenException() {
+        super("SeatTakenException");
     }
 }
-class Seat{
-    boolean taken;
-    int type;
 
-    public Seat(boolean taken, int type) {
-        this.taken = taken;
-        this.type = type;
-    }
-
-    public Seat(boolean taken) {
-        this.taken = taken;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Seat seat = (Seat) o;
-        return taken == seat.taken && type == seat.type;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(taken, type);
-    }
-}
-class Sector implements  Comparable<Sector>{
+class Sector {
     String code;
     int numPlaces;
-    List<Seat> seats;
+    List<Boolean> isSeatTaken;
+    List<Integer> typesOfSeats;
 
     public Sector(String code, int numPlaces) {
         this.code = code;
         this.numPlaces = numPlaces;
-        seats=new ArrayList<>(numPlaces);
-        for(int i=0;i<numPlaces;i++){
-            seats.add(new Seat(false));
+        this.isSeatTaken = new ArrayList<>();
+        typesOfSeats = new ArrayList<>();
+        for (int i = 0; i < numPlaces; i++) {
+            isSeatTaken.add(false);
+            typesOfSeats.add(0);
         }
     }
 
-    int numFreePlaces(){
-        return (int) seats.stream().filter(seat -> seat.taken==Boolean.FALSE).count();
-    }
-    public void takeSeat(int num,int type) throws SeatNotAllowedException {
-        if(seats.contains(new Seat(Boolean.TRUE,2)) && type==1 ||
-        seats.contains(new Seat(Boolean.TRUE,1))&& type==2)
+    public void buySeat(int seat, int type) throws SeatNotAllowedException {
+        if (typesOfSeats.contains(2) && type == 1 || typesOfSeats.contains(1) && type == 2)
             throw new SeatNotAllowedException();
-        seats.set(num,new Seat(true,type));
+        typesOfSeats.add(seat, type);
+        isSeatTaken.set(seat, true);
+    }
+
+    public int numberOfFreePlaces() {
+        return (int) isSeatTaken.stream().filter(seat -> !seat).count();
     }
 
     public String getCode() {
         return code;
     }
 
-    @Override
-    public int compareTo(Sector o) {
-        return Comparator.comparing(Sector::numFreePlaces)
-                .reversed()
-                .thenComparing(Sector::getCode)
-                .compare(this,o);
+    public List<Boolean> getIsSeatTaken() {
+        return isSeatTaken;
     }
 
     @Override
     public String toString() {
-        return String.format("%s\t%d/%d\t%.1f%%",code,numFreePlaces(),numPlaces,(1-numFreePlaces()/(double)numPlaces)*100);
+        return String.format("%s\t%d/%d\t%.1f%%", code, numberOfFreePlaces(), numPlaces, (1 - numberOfFreePlaces() / (double) numPlaces) * 100);
     }
 }
-class Stadium{
+
+class Stadium {
     String name;
-    Set<Sector> sectors;
-    Map<String,Sector>sectorsByName;
+    Map<String, Sector> sectors;
+
     public Stadium(String name) {
         this.name = name;
-        this.sectors=new HashSet<>();
-        this.sectorsByName=new TreeMap<>();
+        this.sectors = new TreeMap<>();
     }
-    public void createSectors(String[] sectorNames, int[] sizes){
-        for(int i=0;i<sectorNames.length;i++){
-            Sector s=new Sector(sectorNames[i],sizes[i]);
-            sectors.add(s);
-            sectorsByName.put(sectorNames[i],s);
-        }
 
+    public void createSectors(String[] sectorNames, int[] sizes) {
+        for (int i = 0; i < sectorNames.length; i++) {
+            String name = sectorNames[i];
+            int size = sizes[i];
+            sectors.put(name, new Sector(name, size));
+        }
     }
-    public void buyTicket(String sectorName, int seat, int type) throws SeatTakenException, SeatNotAllowedException {
-        Sector sector=sectorsByName.get(sectorName);
-        if(sector.seats.get(seat-1).taken)
+
+    public void buyTicket(String sectorName, int seat, int type) throws SeatTakenException {
+        if (sectors.get(sectorName).getIsSeatTaken().get(seat - 1))
             throw new SeatTakenException();
-        sector.takeSeat(seat-1,type);
+        try {
+            sectors.get(sectorName).buySeat(seat - 1, type);
+        } catch (SeatNotAllowedException e) {
+            System.out.println(e.getMessage());
+        }
     }
-    public void showSectors(){
-        sectors.stream()
-                .sorted()
+
+    public void showSectors() {
+        sectors.values().stream().sorted(Comparator.comparing(Sector::numberOfFreePlaces).reversed().thenComparing(Sector::getCode))
                 .forEach(System.out::println);
     }
-
 }
 
-public class StadiumTest{
+public class StadiumTest {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         int n = scanner.nextInt();
@@ -133,8 +113,6 @@ public class StadiumTest{
             try {
                 stadium.buyTicket(parts[0], Integer.parseInt(parts[1]),
                         Integer.parseInt(parts[2]));
-            } catch (SeatNotAllowedException e) {
-                System.out.println("SeatNotAllowedException");
             } catch (SeatTakenException e) {
                 System.out.println("SeatTakenException");
             }
