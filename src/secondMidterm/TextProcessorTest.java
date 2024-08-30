@@ -2,118 +2,126 @@ package secondMidterm;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+class TextLine {
+    List<String> words;
+    List<String> modifiedWords;
 
-class Line {
-    String text;
-
-    public Line(String text) {
-        this.text = text;
+    public TextLine(List<String> words) {
+        this.words = words;
+        modifyWords();
     }
 
-    public Line modifyLine() {
-        StringBuilder newString = new StringBuilder();
-        for (int i = 0; i < text.length(); i++) {
-            if (Character.isLetter(text.charAt(i)) || Character.isWhitespace(text.charAt(i))) {
-                newString.append(text.charAt(i));
+    public void modifyWords() {
+        modifiedWords = words.stream().map(word -> {
+            StringBuilder newWord = new StringBuilder();
+            for (Character c : word.toCharArray()) {
+                if (Character.isLetter(c)) {
+                    newWord.append(c);
+                }
             }
-        }
-        newString = new StringBuilder(newString.toString().toLowerCase());
-        return new Line(newString.toString());
+            return newWord.toString().toLowerCase();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        words.forEach(word -> sb.append(word).append(" "));
+        return sb.toString();
     }
 }
 
 class TextProcessor {
-    List<Line> lines;
-    Set<String> words;
-    Map<String, Integer> frequencyOfWord;
-    Map<String, List<Integer>> frequencyOfLine;
+    List<TextLine> lines;
+    Set<String> uniqueWords;
+
 
     public TextProcessor() {
         this.lines = new ArrayList<>();
-        this.frequencyOfWord = new TreeMap<>();
-        this.words = new TreeSet<>();
-        this.frequencyOfLine = new TreeMap<>();
+        this.uniqueWords = new TreeSet<>();
     }
 
-    public void readText(InputStream in) {
-        BufferedReader br = new BufferedReader(new InputStreamReader(in));
+    public void readText(InputStream is) {
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
         br.lines().forEach(line -> {
-            lines.add(new Line(line));
-            frequencyOfLine.putIfAbsent(line, new ArrayList<>());
+            TextLine tx = createTextLine(line);
+            lines.add(tx);
+            uniqueWords.addAll(tx.modifiedWords);
         });
     }
 
-    public void findUniqueWords() {
-        lines.forEach(line -> {
-            String[] parts = line.modifyLine().text.split("\\s+");
-            Arrays.stream(parts).forEach(part -> {
-                        words.add(part);
-                        frequencyOfWord.putIfAbsent(part, 0);
-                        frequencyOfWord.put(part, frequencyOfWord.get(part.toLowerCase()) + 1);
-                    }
-            );
+    public TextLine createTextLine(String line) {
+        return new TextLine(List.of(line.split("\\s+")));
+    }
+
+    public List<Integer> frequencyOfLine(TextLine line) {
+        List<Integer> frequencyOfLine = new ArrayList<>();
+
+        uniqueWords.forEach(uniqueWord -> {
+            AtomicInteger counter = new AtomicInteger(0);
+            line.modifiedWords.forEach(word -> {
+                if (word.equals(uniqueWord)) counter.getAndIncrement();
+            });
+            frequencyOfLine.add(counter.get());
         });
-    }
 
-    public int countOccurrences(String line, String word) {
-        return (int) Arrays.stream(line.split("\\s+"))
-                .filter(part -> part.equals(word))
-                .count();
+        return frequencyOfLine;
     }
-
 
     public void printTextsVectors(OutputStream out) {
-        findUniqueWords();
         PrintWriter pw = new PrintWriter(out);
-
-        lines.forEach(line -> {
-            List<Integer> frequencies = words.stream()
-                    .map(word -> countOccurrences(line.modifyLine().text, word))
-                    .collect(Collectors.toList());
-
-            frequencyOfLine.put(line.text, frequencies);
-            pw.println(frequencies);
-        });
-
+        lines.forEach(line -> pw.println(frequencyOfLine(line).toString()));
         pw.flush();
     }
 
-    public void printCorpus(OutputStream out, int n, boolean b) {
+    public void printCorpus(OutputStream out, int n, boolean ascending) {
         PrintWriter pw = new PrintWriter(out);
-        Comparator<Integer> c = Comparator.naturalOrder();
+        Map<String, Integer> frequencyOfWord = new TreeMap<>();
 
-        if (!b)
-            c = c.reversed();
+        uniqueWords.forEach(word -> {
+            AtomicInteger countFrequencies = new AtomicInteger();
+            lines.forEach(line -> line.modifiedWords.forEach(part -> {
+                if (part.equals(word))
+                    countFrequencies.getAndIncrement();
+            }));
+            frequencyOfWord.put(word, countFrequencies.get());
+        });
+
 
         frequencyOfWord.entrySet().stream()
-                .sorted(Map.Entry.comparingByValue(c))
+                .sorted(ascending
+                        ? Map.Entry.comparingByValue()
+                        : Map.Entry.<String, Integer>comparingByValue().reversed())
                 .limit(n)
                 .forEach(entry -> pw.println(entry.getKey() + " : " + entry.getValue()));
-
         pw.flush();
     }
 
     public void mostSimilarTexts(OutputStream out) {
         PrintWriter pw = new PrintWriter(out);
-        AtomicReference<Double> maxSimilarity = new AtomicReference<>((double) 0);
-        AtomicReference<String> text = new AtomicReference<>("");
+        TextLine mostSimilarFirst = null;
+        TextLine mostSimilarSecond = null;
+        double maxSimilarity = 0;
 
-        lines.forEach(line1 -> lines.stream()
-                .filter(line2 -> line1 != line2)
-                .forEach(line2 -> {
-                    double similarity = CosineSimilarityCalculator
-                            .cosineSimilarity(frequencyOfLine.get(line1.text), frequencyOfLine.get(line2.text));
-                    if ( similarity>maxSimilarity.get() ) {
-                        maxSimilarity.set(similarity);
-                        text.set(line1.text + "\n" + line2.text);
+        for (TextLine line1 : lines) {
+            for (TextLine line2 : lines) {
+                if (!line1.equals(line2)) {
+                    double similarity = CosineSimilarityCalculator.cosineSimilarity(frequencyOfLine(line1), frequencyOfLine(line2));
+                    if (similarity > maxSimilarity) {
+                        maxSimilarity = similarity;
+                        mostSimilarFirst = new TextLine(line1.words);
+                        mostSimilarSecond = new TextLine(line2.words);
                     }
-                }));
+                }
+            }
+        }
 
-        pw.println(text);
-        pw.println(String.format("%.10f", maxSimilarity.get()));
+        pw.println(mostSimilarFirst);
+        pw.println(mostSimilarSecond);
+        pw.println(maxSimilarity);
         pw.flush();
     }
 }
