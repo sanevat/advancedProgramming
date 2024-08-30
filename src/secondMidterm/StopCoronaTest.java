@@ -123,9 +123,8 @@ class StopCoronaApp{
     public void printIndirectContacts(AppUser u){
         getIndirectContacts(u).stream()
                 .sorted(Comparator.comparing(AppUser::getName).thenComparing(AppUser::getId))
-                .forEach(indirectContact->{
-                    System.out.println(indirectContact.name+" "+ indirectContact.id.substring(0,4)+"***");
-        });
+                .forEach(indirectContact->
+                    System.out.println(indirectContact.name+" "+ indirectContact.id.substring(0,4)+"***"));
         System.out.println("Count of indirect contacts: "+getIndirectContacts(u).size());
     }
     public double averageDirectContacts() {
@@ -160,10 +159,6 @@ class StopCoronaApp{
 }
 
 public class StopCoronaTest {
-
-    public static double timeBetweenInSeconds(ILocation location1, ILocation location2) {
-        return Math.abs(Duration.between(location1.getTimestamp(), location2.getTimestamp()).getSeconds());
-    }
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
